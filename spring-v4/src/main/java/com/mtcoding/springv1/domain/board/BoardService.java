@@ -2,7 +2,10 @@ package com.mtcoding.springv1.domain.board;
 
 import com.mtcoding.springv1.app.dto.BoardDetailResponseDTO;
 import com.mtcoding.springv1.app.dto.BoardResponseDTO;
+import com.mtcoding.springv1.app.dto.BoardSaveOrUpdateResponseDTO;
 import com.mtcoding.springv1.app.dto.BoardSaveRequestDTO;
+import com.mtcoding.springv1.core.handler.ex.Exception403;
+import com.mtcoding.springv1.core.handler.ex.Exception404;
 import com.mtcoding.springv1.domain.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,10 +25,7 @@ public class BoardService {
 
         List<BoardResponseDTO> respDTO = new ArrayList<>();
         for (Board board : boardList) {
-            BoardResponseDTO boardResponseDTO = new BoardResponseDTO();
-            boardResponseDTO.setId(board.getId());
-            boardResponseDTO.setTitle(board.getTitle());
-            respDTO.add(boardResponseDTO);
+            respDTO.add(new BoardResponseDTO(board));
         }
         return respDTO;
     }
@@ -33,16 +33,17 @@ public class BoardService {
 
     public BoardDetailResponseDTO 게시글상세(int id) {
         Board board = boardJpaRepository.findByIdJoinUserAndReplies(id); // board
-        
+
         BoardDetailResponseDTO respDTO = new BoardDetailResponseDTO(board);
 
         return respDTO;
     }
 
     @Transactional
-    public void 게시글쓰기(BoardSaveRequestDTO boardSaveRequestDTO, User sessionUser) {
+    public BoardSaveOrUpdateResponseDTO 게시글쓰기(BoardSaveRequestDTO boardSaveRequestDTO, User sessionUser) {
         Board board = new Board(null, boardSaveRequestDTO.getTitle(), boardSaveRequestDTO.getContent(), sessionUser);
-        boardJpaRepository.save(board);
+        Board savedBoard = boardJpaRepository.save(board);
+        return new BoardSaveOrUpdateResponseDTO(savedBoard);
     }
 
     @Transactional
@@ -50,18 +51,18 @@ public class BoardService {
         Board findBoard = boardJpaRepository.findById(id);
 
         if (findBoard == null) {
-            throw new RuntimeException("게시글을 찾을 수 없음 404");
+            throw new Exception404("게시글을 찾을 수 없음");
         }
 
         if (findBoard.getUser().getId() != sessionUser.getId()) {
-            throw new RuntimeException("권한 없음 403");
+            throw new Exception403("권한 없음");
         }
 
         boardJpaRepository.deleteById(id);
     }
 
     @Transactional
-    public void 게시글수정(int id, BoardSaveRequestDTO boardSaveRequestDTO, User sessionUser) {
+    public BoardSaveOrUpdateResponseDTO 게시글수정(int id, BoardSaveRequestDTO boardSaveRequestDTO, User sessionUser) {
         Board findBoard = boardJpaRepository.findById(id);
 
         if (findBoard == null) {
@@ -73,5 +74,7 @@ public class BoardService {
         }
 
         findBoard.update(boardSaveRequestDTO.getTitle(), boardSaveRequestDTO.getContent()); // 상태변경
+
+        return new BoardSaveOrUpdateResponseDTO(findBoard);
     } // 트랜잭션 종료시에 flush가 자동으로 일어나면서 더티체킹이 된다.
 }

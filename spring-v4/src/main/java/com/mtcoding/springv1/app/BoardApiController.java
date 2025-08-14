@@ -2,6 +2,8 @@ package com.mtcoding.springv1.app;
 
 import com.mtcoding.springv1.app.dto.BoardResponseDTO;
 import com.mtcoding.springv1.app.dto.BoardSaveRequestDTO;
+import com.mtcoding.springv1.core.handler.ex.Exception401;
+import com.mtcoding.springv1.core.util.Resp;
 import com.mtcoding.springv1.domain.board.BoardService;
 import com.mtcoding.springv1.domain.user.User;
 import com.mtcoding.springv1.app.dto.BoardDetailResponseDTO;
@@ -9,9 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,70 +26,47 @@ public class BoardApiController {
     // localhost:8080/board?title=스프링
     // select * from board_tb where id = 1;
     // localhost:8080/board/1 -> PathValue
-    @PostMapping("/board/{id}/update")
-    public String updateById(@PathVariable("id") int id, BoardSaveRequestDTO reqDTO) {
+    @PutMapping("/{id}")
+    public Resp updateById(@PathVariable("id") int id, @RequestBody BoardSaveRequestDTO reqDTO) {
         User sessionUser = (User) session.getAttribute("sessionUser");
 
-        if (sessionUser == null) throw new RuntimeException("로그인 하세요");
+        if (sessionUser == null) throw new Exception401("로그인 하세요");
 
-        boardService.게시글수정(id, reqDTO, sessionUser);
-        return "redirect:/board/" + id;
+        var respDTO = boardService.게시글수정(id, reqDTO, sessionUser);
+        return Resp.ok(respDTO);
     }
 
-    @PostMapping("/board/{id}/delete")
-    public String deleteById(@PathVariable("id") int id) {
+    @DeleteMapping("/{id}")
+    public Resp deleteById(@PathVariable("id") int id) {
         User sessionUser = (User) session.getAttribute("sessionUser");
 
-        if (sessionUser == null) throw new RuntimeException("로그인 하세요");
+        if (sessionUser == null) throw new Exception401("로그인 하세요");
 
         boardService.게시글삭제(id, sessionUser);
-        return "redirect:/board";
+        return null;
     }
 
-    @PostMapping("/board/save")
-    public String save(BoardSaveRequestDTO reqDTO) {
+    @PostMapping
+    public Resp save(@RequestBody BoardSaveRequestDTO reqDTO) {
         User sessionUser = (User) session.getAttribute("sessionUser");
 
-        if (sessionUser == null) throw new RuntimeException("로그인 하세요");
+        if (sessionUser == null) throw new Exception401("로그인 하세요");
 
-        boardService.게시글쓰기(reqDTO, sessionUser);
-        return "redirect:/board";
+        var respDTO = boardService.게시글쓰기(reqDTO, sessionUser);
+        return Resp.ok(respDTO);
     }
 
-    @GetMapping("/board")
-    public String list(HttpServletRequest request) {
-        List<BoardResponseDTO> respDTO = boardService.게시글목록();
-
-        request.setAttribute("models", respDTO);
-
-        return "board/list"; // text/html
+    @GetMapping
+    public Resp list() {
+        var respDTO = boardService.게시글목록();
+        return Resp.ok(respDTO); // text/html
     }
 
-    @GetMapping("/board/save-form")
-    public String saveForm() {
-        return "board/save-form";
-    }
+    @GetMapping("/{id}")
+    public Resp detail(@PathVariable("id") int id) {
 
-    @GetMapping("/board/{id}/update-form")
-    public String updateForm(@PathVariable("id") int id, HttpServletRequest request) {
-        User sessionUser = (User) session.getAttribute("sessionUser");
+        var respDTO = boardService.게시글상세(id);
 
-        if (sessionUser == null) throw new RuntimeException("로그인 하세요");
-
-        BoardDetailResponseDTO respDTO = boardService.게시글상세(id);
-
-        request.setAttribute("model", respDTO);
-
-        return "board/update-form";
-    }
-
-    @GetMapping("/board/{id}")
-    public String detail(@PathVariable("id") int id, HttpServletRequest request) {
-
-        BoardDetailResponseDTO respDTO = boardService.게시글상세(id);
-
-        request.setAttribute("model", respDTO);
-
-        return "board/detail";
+        return Resp.ok(respDTO);
     }
 }
